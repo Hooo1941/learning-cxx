@@ -1,4 +1,5 @@
 ﻿#include "../exercise.h"
+#include <cstring>
 
 // READ: 类模板 <https://zh.cppreference.com/w/cpp/language/class_template>
 
@@ -10,6 +11,8 @@ struct Tensor4D {
     Tensor4D(unsigned int const shape_[4], T const *data_) {
         unsigned int size = 1;
         // TODO: 填入正确的 shape 并计算 size
+        std::memcpy(shape, shape_, 4 * sizeof(unsigned int));
+        size = shape[0] * shape[1] * shape[2] * shape[3];
         data = new T[size];
         std::memcpy(data, data_, size * sizeof(T));
     }
@@ -27,7 +30,35 @@ struct Tensor4D {
     // 例如，`this` 形状为 `[1, 2, 3, 4]`，`others` 形状为 `[1, 2, 1, 4]`，
     // 则 `this` 与 `others` 相加时，3 个形状为 `[1, 2, 1, 4]` 的子张量各自与 `others` 对应项相加。
     Tensor4D &operator+=(Tensor4D const &others) {
-        // TODO: 实现单向广播的加法
+        for (unsigned int i = 0; i < 4; ++i) {
+            ASSERT(shape[i] == others.shape[i] || shape[i] == 1 || others.shape[i] == 1, "Invalid shape");
+        }
+
+        unsigned int this_index[4] = {0};
+        unsigned int others_index[4] = {0};
+
+        for (this_index[0] = 0; this_index[0] < shape[0]; ++this_index[0]) {
+            others_index[0] = this_index[0] % others.shape[0];
+            for (this_index[1] = 0; this_index[1] < shape[1]; ++this_index[1]) {
+                others_index[1] = this_index[1] % others.shape[1];
+                for (this_index[2] = 0; this_index[2] < shape[2]; ++this_index[2]) {
+                    others_index[2] = this_index[2] % others.shape[2];
+                    for (this_index[3] = 0; this_index[3] < shape[3]; ++this_index[3]) {
+                        others_index[3] = this_index[3] % others.shape[3];
+                        unsigned int this_flat_index = this_index[0] * shape[1] * shape[2] * shape[3] +
+                                                       this_index[1] * shape[2] * shape[3] +
+                                                       this_index[2] * shape[3] +
+                                                       this_index[3];
+                        unsigned int others_flat_index = others_index[0] * others.shape[1] * others.shape[2] * others.shape[3] +
+                                                         others_index[1] * others.shape[2] * others.shape[3] +
+                                                         others_index[2] * others.shape[3] +
+                                                         others_index[3];
+                        data[this_flat_index] += others.data[others_flat_index];
+                    }
+                }
+            }
+        }
+
         return *this;
     }
 };
